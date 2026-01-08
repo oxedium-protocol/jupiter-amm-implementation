@@ -4945,6 +4945,91 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "oxedium_swap",
+      "discriminator": [
+        248,
+        198,
+        158,
+        145,
+        225,
+        117,
+        135,
+        200
+      ],
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "vault_in",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vault_out",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "treasury",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "pyth_price_in",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "pyth_price_out",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "user_source_token_account",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "user_destination_token_account",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "user_transfer_authority",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "token_program",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associated_token_program",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "system_program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount_in",
+          "type": "u64"
+        },
+        {
+          "name": "partner_fee_bps",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "types": [

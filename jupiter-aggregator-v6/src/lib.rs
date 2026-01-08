@@ -186,7 +186,8 @@ impl From<jupiter_amm_interface::Swap> for types::Swap {
             }
             jupiter_amm_interface::Swap::TesseraV { side } => {
                 types::Swap::TesseraV { side: side.into() }
-            }
+            },
+            jupiter_amm_interface::Swap::Oxedium => types::Swap::Oxedium,
         }
     }
 }
