@@ -8,9 +8,6 @@ mod tests {
 
     #[test]
     fn test_oxedium_amm_quote_direct() {
-        // ---------------------------
-        // 1. Prepare dummy data
-        // ---------------------------
         let vault_in_pubkey = Pubkey::new_unique();
         let vault_out_pubkey = Pubkey::new_unique();
         let token_in = Pubkey::from_str_const("So11111111111111111111111111111111111111112");
@@ -18,7 +15,6 @@ mod tests {
         let pyth_in = Pubkey::new_unique();
         let pyth_out = Pubkey::new_unique();
 
-        // Vaults represent the AMM reserves
         let vault_in = Vault {
             token_mint: token_in,
             pyth_price_account: pyth_in,
@@ -49,16 +45,12 @@ mod tests {
             protocol_yield: 0,
         };
 
-        // Treasury holds fees
         let treasury = Treasury {
-            fee_bps: 1, // 0.3% fee
+            fee_bps: 1, // 0.01% fee
             stoptap: false,
             admin: Pubkey::new_unique(),
         };
 
-        // ---------------------------
-        // 2. Create the AMM instance manually
-        // ---------------------------
         let mut amm = OxediumAmm {
             key: Pubkey::new_unique(),
             label: "Oxedium".to_string(),
@@ -72,18 +64,12 @@ mod tests {
             program_id: Pubkey::new_unique(),
         };
 
-        // ---------------------------
-        // 3. Set prices and decimals manually
-        // ---------------------------
         amm.prices.insert(pyth_in, 13500000000);   // price_in (e.g., $135)
         amm.prices.insert(pyth_out, 100000000);  // price_out (e.g., $1)
 
-        amm.decimals.insert(token_in, 9);   // e.g., USDC decimals
+        amm.decimals.insert(token_in, 9);   // e.g., SOL decimals
         amm.decimals.insert(token_out, 6);
 
-        // ---------------------------
-        // 4. Create QuoteParams
-        // ---------------------------
         let params = QuoteParams {
             amount: 1_000_000_000, // 1 token_in (with 9 decimals)
 
@@ -92,16 +78,10 @@ mod tests {
             swap_mode: SwapMode::ExactIn,
         };
 
-        // ---------------------------
-        // 5. Call quote()
-        // ---------------------------
         let quote = amm.quote(&params).unwrap();
 
         println!("Quote: {:?}", quote);
 
-        // ---------------------------
-        // 6. Basic assertions
-        // ---------------------------
         assert_eq!(quote.in_amount, params.amount);
         assert!(quote.out_amount > 0);           // Ensure output > 0
         assert!(quote.fee_amount > 0);           // Ensure fees > 0
@@ -110,9 +90,6 @@ mod tests {
 
     #[test]
      fn test_oxedium_amm_get_swap_accounts() {
-        // ---------------------------
-        // 1. Prepare dummy data
-        // ---------------------------
         let vault_in_pubkey = Pubkey::new_unique();
         let vault_out_pubkey = Pubkey::new_unique();
         let token_in = Pubkey::from_str_const("So11111111111111111111111111111111111111112");
@@ -169,9 +146,6 @@ mod tests {
             decimals: HashMap::default(),
         };
 
-        // ---------------------------
-        // 2. Prepare SwapParams
-        // ---------------------------
         let user = Pubkey::new_unique();
         let source_ata = Pubkey::new_unique();
         let dest_ata = Pubkey::new_unique();
@@ -190,14 +164,8 @@ mod tests {
             missing_dynamic_accounts_as_default: false,
         };
 
-        // ---------------------------
-        // 3. Call get_swap_and_account_metas
-        // ---------------------------
         let result = amm.get_swap_and_account_metas(&params).unwrap();
 
-            // ---------------------------
-            // 7. Print accounts if test passed
-            // ---------------------------
             println!("--- Swap Account Metas ---");
             for (i, meta) in result.account_metas.iter().enumerate() {
                 println!(
@@ -209,9 +177,6 @@ mod tests {
                 );
             }
 
-            // ---------------------------
-            // 8. Assertions
-            // ---------------------------
             assert_eq!(result.swap, Swap::Oxedium);
             assert!(!result.account_metas.is_empty());
     }
