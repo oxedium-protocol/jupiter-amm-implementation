@@ -140,7 +140,7 @@ impl Amm for OxediumAmm {
             .get(&vault_out.pyth_price_account)
             .ok_or_else(|| anyhow!("price_out not loaded"))? as u64;
 
-        // Берём decimals из internal state
+        // decimals from internal state
         let in_decimals = *self
             .decimals
             .get(&vault_in.token_mint)
