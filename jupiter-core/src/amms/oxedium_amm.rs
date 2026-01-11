@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use anchor_lang::prelude::AccountMeta;
+use anchor_lang::{AnchorDeserialize, prelude::AccountMeta};
 use anchor_lang::system_program;
 use anyhow::{anyhow, Result};
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -8,6 +8,7 @@ use jupiter_amm_interface::{
     AccountMap, Amm, AmmContext, AmmLabel, AmmProgramIdToLabel, KeyedAccount, Quote, QuoteParams,
     Swap, SwapAndAccountMetas, SwapParams,
 };
+use pyth_solana_receiver_sdk::price_update::PriceUpdateV2;
 use rust_decimal::Decimal;
 use solana_sdk::{account::Account, pubkey::*};
 use spl_associated_token_account::get_associated_token_address;
@@ -220,7 +221,7 @@ impl Amm for OxediumAmm {
         // 3️⃣ prices from oracle (stub or real Pyth)
         for vault in self.vaults.values() {
             if let Some(oracle_acc) = account_map.get(&vault.pyth_price_account) {
-                let price = parse_pyth_price_stub(oracle_acc)?;
+                let price = parse_pyth_price(oracle_acc)?;
                 self.prices.insert(vault.token_mint, price);
             }
         }
@@ -365,6 +366,14 @@ impl Amm for OxediumAmm {
 /// Stub Pyth parser
 /// =======================================================
 
-fn parse_pyth_price_stub(_acc: &Account) -> Result<u64> {
-    Ok(1)
+/// Parse a Pyth price account and return a u64 price scaled appropriately
+fn parse_pyth_price(acc: &Account) -> Result<u64> {
+    // Try to deserialize the account data as a Pyth Price struct
+    let price_data: &PriceUpdateV2 = &PriceUpdateV2::try_from_slice(acc.data.as_slice())
+        .map_err(|e| anyhow!("Failed to parse Pyth price: {:?}", e))?;
+
+    // Extract the raw aggregated price and the exponent
+    let raw_price = price_data.price_message.price as u64; // u64, e.g., 135_000_000_000
+
+    Ok(raw_price)
 }
