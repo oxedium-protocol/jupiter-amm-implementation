@@ -42,7 +42,7 @@ async fn main() {
         config_override,
         command,
     } = Cli::parse();
-
+    
     match command {
         Command::SnapshotAmm {
             amm_id,

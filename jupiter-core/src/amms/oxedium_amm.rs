@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
-use anchor_lang::{AnchorDeserialize, prelude::AccountMeta};
 use anchor_lang::system_program;
+use anchor_lang::{prelude::AccountMeta, AnchorDeserialize};
 use anyhow::{anyhow, Result};
 use borsh::{BorshDeserialize, BorshSerialize};
 use jupiter_amm_interface::{
@@ -26,8 +26,7 @@ use crate::{
 pub mod spl_token_swap_programs {
     use solana_sdk::pubkey::Pubkey;
 
-    pub const OXEDIUM: Pubkey =
-        Pubkey::from_str_const("oxe1hGoyJ41PATPA6ycEYMCyMXWZ33Xwo8rBK8vRCXQ");
+    pub const OXEDIUM: Pubkey = Pubkey::from_str_const("oxe1SKL52HMLBDT2JQvdxscA1LbVc4EEwwSdNZcnDVH");
 }
 
 /// =======================================================
@@ -129,11 +128,19 @@ impl Amm for OxediumAmm {
 
     /// ---------- Lifecycle ----------
 
-    fn from_keyed_account(keyed: &KeyedAccount, _ctx: &AmmContext) -> Result<Self> {
+    fn from_keyed_account(_keyed: &KeyedAccount, _ctx: &AmmContext) -> Result<Self> {
+        let program_id = spl_token_swap_programs::OXEDIUM;
+
+        let treasury = Pubkey::find_program_address(
+            &[OXEDIUM_SEED.as_bytes(), TREASURY_SEED.as_bytes()],
+            &program_id,
+        )
+        .0;
+
         Ok(Self {
-            key: keyed.key,
+            key: treasury,
             label: "Oxedium".to_string(),
-            program_id: keyed.account.owner,
+            program_id,
             vaults: HashMap::new(),
             treasury: None,
             decimals: HashMap::new(),
@@ -199,30 +206,31 @@ impl Amm for OxediumAmm {
             }
         }
 
-        let (_, treasury) = self
-            .treasury
-            .as_ref()
-            .ok_or_else(|| anyhow!("treasury not loaded"))?;
+        // treasury is REQUIRED
+        let (_, treasury) = match self.treasury.as_ref() {
+            Some(t) => t,
+            None => return Ok(()),
+        };
 
         if treasury.stoptap {
-            return Err(anyhow!("Oxedium stopped by treasury"));
+            return Ok(());
         }
 
-        // 2️⃣ mint decimals
+        // 2️⃣ mint decimals (best-effort)
         for vault in self.vaults.values() {
-            let mint_acc = account_map
-                .get(&vault.token_mint)
-                .ok_or_else(|| anyhow!("mint account not loaded"))?;
-
-            let dec = parse_mint_decimals(mint_acc)?;
-            self.decimals.insert(vault.token_mint, dec);
+            if let Some(mint_acc) = account_map.get(&vault.token_mint) {
+                if let Ok(dec) = parse_mint_decimals(mint_acc) {
+                    self.decimals.insert(vault.token_mint, dec);
+                }
+            }
         }
 
-        // 3️⃣ prices from oracle (stub or real Pyth)
+        // 3️⃣ oracle prices (best-effort)
         for vault in self.vaults.values() {
             if let Some(oracle_acc) = account_map.get(&vault.pyth_price_account) {
-                let price = parse_pyth_price(oracle_acc)?;
-                self.prices.insert(vault.token_mint, price);
+                if let Ok(price) = parse_pyth_price(oracle_acc) {
+                    self.prices.insert(vault.token_mint, price);
+                }
             }
         }
 
@@ -232,11 +240,13 @@ impl Amm for OxediumAmm {
     /// ---------- Quote ----------
 
     fn quote(&self, params: &QuoteParams) -> Result<Quote> {
-        let treasury_fee_bps = self
-            .treasury
-            .as_ref()
-            .map(|(_, t)| t.fee_bps)
-            .unwrap_or(0);
+        if !self.prices.contains_key(&params.input_mint)
+            || !self.prices.contains_key(&params.output_mint)
+        {
+            return Err(anyhow!("oracle not ready"));
+        }
+
+        let treasury_fee_bps = self.treasury.as_ref().map(|(_, t)| t.fee_bps).unwrap_or(0);
 
         let vault_in = self
             .vaults
