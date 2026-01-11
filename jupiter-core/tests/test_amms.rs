@@ -64,8 +64,8 @@ mod tests {
             program_id: Pubkey::new_unique(),
         };
 
-        amm.prices.insert(pyth_in, 13500000000);   // price_in (e.g., $135)
-        amm.prices.insert(pyth_out, 100000000);  // price_out (e.g., $1)
+        amm.prices.insert(token_in, 13500000000);   // price_in (e.g., $135)
+        amm.prices.insert(token_out, 100000000);  // price_out (e.g., $1)
 
         amm.decimals.insert(token_in, 9);   // e.g., SOL decimals
         amm.decimals.insert(token_out, 6);
