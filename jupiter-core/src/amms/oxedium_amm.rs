@@ -30,12 +30,14 @@ pub mod spl_token_swap_programs {
 }
 
 /// =======================================================
-/// Supported mints (ограниченный сет)
+/// All possible mints
 /// =======================================================
 
-const SUPPORTED_MINTS: &[Pubkey] = &[
+const ALL_POSSIBLE_MINTS: &[Pubkey] = &[
     Pubkey::from_str_const("So11111111111111111111111111111111111111112"),
     Pubkey::from_str_const("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"),
+    // USDT - Pubkey::from_str_const("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"),
+    // USD1 - Pubkey::from_str_const("USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB"),
 ];
 
 /// =======================================================
@@ -89,7 +91,7 @@ impl Amm for OxediumAmm {
     }
 
     fn get_reserve_mints(&self) -> Vec<Pubkey> {
-        SUPPORTED_MINTS.to_vec()
+        ALL_POSSIBLE_MINTS.to_vec()
     }
 
     fn has_dynamic_accounts(&self) -> bool {
@@ -152,7 +154,7 @@ impl Amm for OxediumAmm {
         accounts.push(treasury);
 
         // vaults + mint decimals
-        for mint in SUPPORTED_MINTS {
+        for mint in ALL_POSSIBLE_MINTS {
             let vault = Pubkey::find_program_address(
                 &[VAULT_SEED.as_bytes(), mint.as_ref()],
                 &self.program_id,
