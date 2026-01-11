@@ -1,184 +1,209 @@
-#[cfg(test)]
-mod tests {
-    use std::collections::HashMap;
+use jupiter_amm_interface::{AccountMap, AmmContext, ClockRef, Swap, SwapMode};
+use jupiter_core::{
+    amm::Amm, amms::test_harness::AmmTestHarness, oxedium_amm::OxediumAmm, route::route::get_token_mints_permutations, test_harness::{AmmTestAccountsSnapshot, AmmTestSwapParams, TestProgram, load_test_programs}
+};
+use solana_sdk::pubkey;
+use solana_sdk::pubkey::Pubkey;
 
-    use jupiter_core::{oxedium_amm::OxediumAmm, states::{Treasury, Vault}};
-    use solana_sdk::pubkey::Pubkey;
-    use jupiter_amm_interface::{Amm, QuoteParams, Swap, SwapMode, SwapParams};
-
-    #[test]
-    fn test_oxedium_amm_quote_direct() {
-        let vault_in_pubkey = Pubkey::new_unique();
-        let vault_out_pubkey = Pubkey::new_unique();
-        let token_in = Pubkey::from_str_const("So11111111111111111111111111111111111111112");
-        let token_out = Pubkey::from_str_const("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
-        let pyth_in = Pubkey::new_unique();
-        let pyth_out = Pubkey::new_unique();
-
-        let vault_in = Vault {
-            token_mint: token_in,
-            pyth_price_account: pyth_in,
-            create_at_ts: 1,
-            is_active: true,
-            base_fee: 1,
-            max_age_price: 300,
-            lp_mint: Pubkey::new_unique(),
-            initial_liquidity: 1000000000000,
-            current_liquidity: 1000000000000,
-            max_liquidity: 1000000000000,
-            cumulative_yield_per_lp: 0,
-            protocol_yield: 0,
-        };
-
-        let vault_out = Vault {
-            token_mint: token_out,
-            pyth_price_account: pyth_out,
-            create_at_ts: 1,
-            is_active: true,
-            base_fee: 1,
-            max_age_price: 300,
-            lp_mint: Pubkey::new_unique(),
-            initial_liquidity: 1000000000000,
-            current_liquidity: 1000000000000,
-            max_liquidity: 1000000000000,
-            cumulative_yield_per_lp: 0,
-            protocol_yield: 0,
-        };
-
-        let treasury = Treasury {
-            fee_bps: 1, // 0.01% fee
-            stoptap: false,
-            admin: Pubkey::new_unique(),
-        };
-
-        let mut amm = OxediumAmm {
-            key: Pubkey::new_unique(),
-            label: "Oxedium".to_string(),
-            treasury: Some((Pubkey::new_unique(), treasury)),
-            vaults: HashMap::from([
-                (vault_in_pubkey, vault_in),
-                (vault_out_pubkey, vault_out),
-            ]),
-            prices: HashMap::default(),
-            decimals: HashMap::default(),
-            program_id: Pubkey::new_unique(),
-        };
-
-        amm.prices.insert(token_in, 13500000000);   // price_in (e.g., $135)
-        amm.prices.insert(token_out, 100000000);  // price_out (e.g., $1)
-
-        amm.decimals.insert(token_in, 9);   // e.g., SOL decimals
-        amm.decimals.insert(token_out, 6);
-
-        let params = QuoteParams {
-            amount: 1_000_000_000, // 1 token_in (with 9 decimals)
-
-            input_mint: token_in,
-            output_mint: token_out,
-            swap_mode: SwapMode::ExactIn,
-        };
-
-        let quote = amm.quote(&params).unwrap();
-
-        println!("Quote: {:?}", quote);
-
-        assert_eq!(quote.in_amount, params.amount);
-        assert!(quote.out_amount > 0);           // Ensure output > 0
-        assert!(quote.fee_amount > 0);           // Ensure fees > 0
-        assert_eq!(quote.fee_mint, token_out);   // Fee is taken in output token
+#[derive(Default)]
+struct TestAmmSettings {
+    tolerance: u64,
+    restricted_mint_permutations: Option<Vec<(Pubkey, Pubkey)>>,
+    expect_error: Option<anyhow::Error>,
+    expect_swaps: Option<Vec<Swap>>,
+    program_name: Option<String>,
+    amounts: Option<Vec<u64>>,
+}
+impl TestAmmSettings {
+    fn new_with_tolerance(tolerance: u64) -> Self {
+        Self {
+            tolerance,
+            ..Default::default()
+        }
     }
-
-    #[test]
-     fn test_oxedium_amm_get_swap_accounts() {
-        let vault_in_pubkey = Pubkey::new_unique();
-        let vault_out_pubkey = Pubkey::new_unique();
-        let token_in = Pubkey::from_str_const("So11111111111111111111111111111111111111112");
-        let token_out = Pubkey::from_str_const("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
-        let pyth_in = Pubkey::new_unique();
-        let pyth_out = Pubkey::new_unique();
-
-        let vault_in = Vault {
-            token_mint: token_in,
-            pyth_price_account: pyth_in,
-            create_at_ts: 0,
-            is_active: true,
-            base_fee: 0,
-            max_age_price: 0,
-            lp_mint: Pubkey::new_unique(),
-            initial_liquidity: 1_000_000,
-            current_liquidity: 1_000_000,
-            max_liquidity: 1_000_000,
-            cumulative_yield_per_lp: 0,
-            protocol_yield: 0,
-        };
-
-        let vault_out = Vault {
-            token_mint: token_out,
-            pyth_price_account: pyth_out,
-            create_at_ts: 0,
-            is_active: true,
-            base_fee: 0,
-            max_age_price: 0,
-            lp_mint: Pubkey::new_unique(),
-            initial_liquidity: 1_000_000,
-            current_liquidity: 1_000_000,
-            max_liquidity: 1_000_000,
-            cumulative_yield_per_lp: 0,
-            protocol_yield: 0,
-        };
-
-        let treasury = Treasury {
-            fee_bps: 30,
-            stoptap: false,
-            admin: Pubkey::new_unique(),
-        };
-
-        let amm = OxediumAmm {
-            key: Pubkey::new_unique(),
-            label: "Oxedium".to_string(),
-            treasury: Some((Pubkey::new_unique(), treasury)),
-            program_id: Pubkey::new_unique(),
-            vaults: HashMap::from([
-                (vault_in_pubkey, vault_in),
-                (vault_out_pubkey, vault_out),
-            ]),
-            prices: HashMap::default(),
-            decimals: HashMap::default(),
-        };
-
-        let user = Pubkey::new_unique();
-        let source_ata = Pubkey::new_unique();
-        let dest_ata = Pubkey::new_unique();
-
-        let params = SwapParams {
-            in_amount: 1000,
-            token_transfer_authority: user,
-            source_token_account: source_ata,
-            destination_token_account: dest_ata,
-            quote_mint_to_referrer: None,
-            swap_mode: SwapMode::ExactIn,
-            out_amount: 1,
-            source_mint: token_in,
-            destination_mint: token_out,
-            jupiter_program_id: &Pubkey::new_unique(),
-            missing_dynamic_accounts_as_default: false,
-        };
-
-        let result = amm.get_swap_and_account_metas(&params).unwrap();
-
-            println!("--- Swap Account Metas ---");
-            for (i, meta) in result.account_metas.iter().enumerate() {
-                println!(
-                    "{}: pubkey={}, writable={}, signer={}",
-                    i,
-                    meta.pubkey,
-                    meta.is_writable,
-                    meta.is_signer
-                );
-            }
-
-            assert_eq!(result.swap, Swap::Oxedium);
-            assert!(!result.account_metas.is_empty());
+    fn new_with_mint_permutations(mint_permutations: Vec<(Pubkey, Pubkey)>) -> Self {
+        Self {
+            restricted_mint_permutations: Some(mint_permutations),
+            ..Default::default()
+        }
+    }
+    fn new_with_expected_error(expected_error: anyhow::Error) -> Self {
+        Self {
+            expect_error: Some(expected_error),
+            ..Default::default()
+        }
+    }
+    fn new_with_expected_swaps(swaps: Vec<Swap>) -> Self {
+        Self {
+            expect_swaps: Some(swaps),
+            ..Default::default()
+        }
     }
 }
 
+/// Loads AMM from snapshot and tests quoting
+#[allow(clippy::too_many_arguments)]
+fn test_quoting_for_amm_key<T: Amm + 'static>(
+    amm_key: Pubkey,
+    swap_mode: SwapMode,
+    use_shared_accounts: bool,
+    test_amm_settings: TestAmmSettings,
+    option: Option<String>,
+    before_test_setup: Option<impl FnMut(&dyn Amm, &mut AccountMap)>,
+) {
+    let TestAmmSettings {
+        tolerance,
+        restricted_mint_permutations,
+        expect_error,
+        expect_swaps,
+        program_name,
+        amounts,
+    } = test_amm_settings;
+
+    let amm_test_accounts_snapshot = AmmTestAccountsSnapshot::load(amm_key, option.clone());
+    let keyed_account = amm_test_accounts_snapshot.get_keyed_account().unwrap();
+    let amm_context = AmmContext {
+        clock_ref: ClockRef::from(amm_test_accounts_snapshot.get_clock().unwrap()),
+    };
+
+    // All the test setup and can go over the stack size
+    let mut amm = T::from_keyed_account(&keyed_account, &amm_context).unwrap();
+    let test_programs = load_test_programs(&amm, program_name.clone());
+    if amm.requires_update_for_reserve_mints() {
+        amm_test_accounts_snapshot.update_amm_from_snapshot(&mut amm);
+    }
+    test_quoting_with_amm(
+        &amm_test_accounts_snapshot,
+        &test_programs,
+        Box::new(amm),
+        tolerance,
+        use_shared_accounts,
+        swap_mode,
+        before_test_setup,
+        expect_error,
+        expect_swaps.as_deref(),
+        restricted_mint_permutations,
+        amounts.as_deref(),
+    )
+}
+
+macro_rules! test_exact_in_amms {
+    ($(($amm_key:expr, $amm_struct:ty, $test_amm_settings:expr),)*) => {
+        test_exact_in_amms!(
+            $(($amm_key, $amm_struct, $test_amm_settings, "default"),)*
+        );
+    };
+    ($(($amm_key:expr, $amm_struct:ty, $test_amm_settings:expr, $option:expr),)*) => {
+        $(
+            paste::item! {
+                #[tokio::test]
+                async fn [<test_quote_ $amm_key:lower _ $option:lower>] () {
+                    let option = match $option {
+                        "default" => None,
+                        _ => Some($option.to_string()),
+                    };
+                    let before_test_setup: Option<fn(&dyn Amm, &mut AccountMap)> = None;
+                    test_quoting_for_amm_key::<$amm_struct>($amm_key, SwapMode::ExactIn, false, $test_amm_settings.unwrap_or_default(), option, before_test_setup)
+                }
+                #[tokio::test]
+                async fn [<test_quote_ $amm_key:lower _ $option:lower _ with_shared_accounts>] () {
+                    let option = match $option {
+                        "default" => None,
+                        _ => Some($option.to_string()),
+                    };
+                    let before_test_setup: Option<fn(&dyn Amm, &mut AccountMap)> = None;
+                    test_quoting_for_amm_key::<$amm_struct>($amm_key, SwapMode::ExactIn, true, $test_amm_settings.unwrap_or_default(), option, before_test_setup)
+                }
+            }
+        )*
+    };
+}
+
+macro_rules! test_exact_out_amms {
+    ($(($amm_key:expr, $amm_struct:ty, $test_amm_settings:expr),)*) => {
+        test_exact_out_amms!(
+            $(($amm_key, $amm_struct, $test_amm_settings, "exact-out"),)*
+        );
+    };
+    ($(($amm_key:expr, $amm_struct:ty, $test_amm_settings:expr, $option:expr),)*) => {
+        $(
+            paste::item! {
+                #[tokio::test]
+                async fn [<test_quote_ $amm_key:lower _ $option:lower>] () {
+                    let option = Some($option.to_string());
+                    let before_test_setup: Option<fn(&dyn Amm, &mut AccountMap)> = None;
+                    test_quoting_for_amm_key::<$amm_struct>($amm_key, SwapMode::ExactOut, true, $test_amm_settings.unwrap_or_default(), option, before_test_setup)
+                }
+                #[tokio::test]
+                async fn [<test_quote_ $amm_key:lower _ $option:lower _ without_shared_accounts>] () {
+                    let option = Some($option.to_string());
+                    let before_test_setup: Option<fn(&dyn Amm, &mut AccountMap)> = None;
+                    test_quoting_for_amm_key::<$amm_struct>($amm_key, SwapMode::ExactOut, false, $test_amm_settings.unwrap_or_default(), option, before_test_setup)
+                }
+            }
+        )*
+    };
+}
+
+const OXEDIUM_POOL: Pubkey = pubkey!("DZzt6k2QN77Khj4hYBZFyJVjzuV3KxkSqjMFaUvQoxz1");
+
+// You can run a single test by doing: `cargo test test_quote_<lower_case_constant>_<default | option_name> -- --nocapture`
+
+test_exact_in_amms! {
+    (OXEDIUM_POOL, OxediumAmm, None),
+}
+
+#[allow(clippy::too_many_arguments)]
+fn test_quoting_with_amm(
+    amm_test_accounts_snapshot: &AmmTestAccountsSnapshot,
+    test_programs: &[TestProgram],
+    mut amm: Box<dyn Amm>,
+    tolerance: u64,
+    use_shared_accounts: bool,
+    swap_mode: SwapMode,
+    mut before_test_setup: Option<impl FnMut(&dyn Amm, &mut AccountMap)>,
+    expect_error: Option<anyhow::Error>,
+    expect_swaps: Option<&[Swap]>,
+    restricted_mint_permutations: Option<Vec<(Pubkey, Pubkey)>>,
+    amounts: Option<&[u64]>,
+) {
+    let amm = amm.as_mut();
+
+    let reserve_token_mint_permutations =
+        restricted_mint_permutations.unwrap_or(get_token_mints_permutations(amm, true));
+    let mut one_test_passed = false;
+
+    let mut amounts_iterator = amounts.map(|amounts| amounts.iter());
+    let mut expect_swap_iterator = expect_swaps.map(|expect_swaps| expect_swaps.iter());
+
+    for (source_mint, destination_mint) in reserve_token_mint_permutations {
+        let mut test_harness_program_test = AmmTestHarness::load_program_test(
+            amm_test_accounts_snapshot,
+            test_programs,
+            amm,
+            Some(&[source_mint, destination_mint]),
+            before_test_setup.as_mut(),
+        );
+
+        let amount = amounts_iterator
+            .as_mut()
+            .map(|it| it.next().copied().expect("Missing amount"));
+        let expect_swap = expect_swap_iterator
+            .as_mut()
+            .map(|it| it.next().cloned().expect("Missing swap"));
+        test_harness_program_test.assert_quote_matches_simulated_swap(AmmTestSwapParams {
+            amm,
+            source_mint: &source_mint,
+            destination_mint: &destination_mint,
+            swap_mode,
+            tolerance,
+            use_shared_accounts,
+            expected_error: expect_error.as_ref(),
+            expect_swap,
+            amount,
+        });
+
+        one_test_passed = true;
+    }
+    assert!(one_test_passed);
+}
