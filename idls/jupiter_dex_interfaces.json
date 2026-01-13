@@ -5020,16 +5020,7 @@
           "isSigner": false
         }
       ],
-      "args": [
-        {
-          "name": "amount_in",
-          "type": "u64"
-        },
-        {
-          "name": "partner_fee_bps",
-          "type": "u64"
-        }
-      ]
+      "args": []
     }
   ],
   "types": [

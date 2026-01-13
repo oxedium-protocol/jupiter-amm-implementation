@@ -15,30 +15,30 @@ struct TestAmmSettings {
     amounts: Option<Vec<u64>>,
 }
 impl TestAmmSettings {
-    fn new_with_tolerance(tolerance: u64) -> Self {
-        Self {
-            tolerance,
-            ..Default::default()
-        }
-    }
-    fn new_with_mint_permutations(mint_permutations: Vec<(Pubkey, Pubkey)>) -> Self {
-        Self {
-            restricted_mint_permutations: Some(mint_permutations),
-            ..Default::default()
-        }
-    }
-    fn new_with_expected_error(expected_error: anyhow::Error) -> Self {
-        Self {
-            expect_error: Some(expected_error),
-            ..Default::default()
-        }
-    }
-    fn new_with_expected_swaps(swaps: Vec<Swap>) -> Self {
-        Self {
-            expect_swaps: Some(swaps),
-            ..Default::default()
-        }
-    }
+    // fn new_with_tolerance(tolerance: u64) -> Self {
+    //     Self {
+    //         tolerance,
+    //         ..Default::default()
+    //     }
+    // }
+    // fn new_with_mint_permutations(mint_permutations: Vec<(Pubkey, Pubkey)>) -> Self {
+    //     Self {
+    //         restricted_mint_permutations: Some(mint_permutations),
+    //         ..Default::default()
+    //     }
+    // }
+    // fn new_with_expected_error(expected_error: anyhow::Error) -> Self {
+    //     Self {
+    //         expect_error: Some(expected_error),
+    //         ..Default::default()
+    //     }
+    // }
+    // fn new_with_expected_swaps(swaps: Vec<Swap>) -> Self {
+    //     Self {
+    //         expect_swaps: Some(swaps),
+    //         ..Default::default()
+    //     }
+    // }
 }
 
 /// Loads AMM from snapshot and tests quoting
@@ -119,31 +119,31 @@ macro_rules! test_exact_in_amms {
     };
 }
 
-macro_rules! test_exact_out_amms {
-    ($(($amm_key:expr, $amm_struct:ty, $test_amm_settings:expr),)*) => {
-        test_exact_out_amms!(
-            $(($amm_key, $amm_struct, $test_amm_settings, "exact-out"),)*
-        );
-    };
-    ($(($amm_key:expr, $amm_struct:ty, $test_amm_settings:expr, $option:expr),)*) => {
-        $(
-            paste::item! {
-                #[tokio::test]
-                async fn [<test_quote_ $amm_key:lower _ $option:lower>] () {
-                    let option = Some($option.to_string());
-                    let before_test_setup: Option<fn(&dyn Amm, &mut AccountMap)> = None;
-                    test_quoting_for_amm_key::<$amm_struct>($amm_key, SwapMode::ExactOut, true, $test_amm_settings.unwrap_or_default(), option, before_test_setup)
-                }
-                #[tokio::test]
-                async fn [<test_quote_ $amm_key:lower _ $option:lower _ without_shared_accounts>] () {
-                    let option = Some($option.to_string());
-                    let before_test_setup: Option<fn(&dyn Amm, &mut AccountMap)> = None;
-                    test_quoting_for_amm_key::<$amm_struct>($amm_key, SwapMode::ExactOut, false, $test_amm_settings.unwrap_or_default(), option, before_test_setup)
-                }
-            }
-        )*
-    };
-}
+// macro_rules! test_exact_out_amms {
+//     ($(($amm_key:expr, $amm_struct:ty, $test_amm_settings:expr),)*) => {
+//         test_exact_out_amms!(
+//             $(($amm_key, $amm_struct, $test_amm_settings, "exact-out"),)*
+//         );
+//     };
+//     ($(($amm_key:expr, $amm_struct:ty, $test_amm_settings:expr, $option:expr),)*) => {
+//         $(
+//             paste::item! {
+//                 #[tokio::test]
+//                 async fn [<test_quote_ $amm_key:lower _ $option:lower>] () {
+//                     let option = Some($option.to_string());
+//                     let before_test_setup: Option<fn(&dyn Amm, &mut AccountMap)> = None;
+//                     test_quoting_for_amm_key::<$amm_struct>($amm_key, SwapMode::ExactOut, true, $test_amm_settings.unwrap_or_default(), option, before_test_setup)
+//                 }
+//                 #[tokio::test]
+//                 async fn [<test_quote_ $amm_key:lower _ $option:lower _ without_shared_accounts>] () {
+//                     let option = Some($option.to_string());
+//                     let before_test_setup: Option<fn(&dyn Amm, &mut AccountMap)> = None;
+//                     test_quoting_for_amm_key::<$amm_struct>($amm_key, SwapMode::ExactOut, false, $test_amm_settings.unwrap_or_default(), option, before_test_setup)
+//                 }
+//             }
+//         )*
+//     };
+// }
 
 const OXEDIUM_POOL: Pubkey = pubkey!("DZzt6k2QN77Khj4hYBZFyJVjzuV3KxkSqjMFaUvQoxz1");
 
