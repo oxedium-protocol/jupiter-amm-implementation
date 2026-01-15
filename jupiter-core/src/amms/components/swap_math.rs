@@ -10,7 +10,6 @@ pub struct SwapMathResult {
     pub net_amount_out: u64,
     pub lp_fee_amount: u64,
     pub protocol_fee_amount: u64,
-    pub partner_fee_amount: u64,
 }
 
 /// Computes the resulting amounts and fees for a token swap
@@ -24,7 +23,6 @@ pub struct SwapMathResult {
 /// * `vault_in` - Input token vault info
 /// * `vault_out` - Output token vault info
 /// * `treasury` - Treasury info containing protocol fees
-/// * `partner_fee_bps` - Optional partner fee in basis points
 ///
 /// # Returns
 /// `SwapMathResult` containing raw output, net output, and all individual fees
@@ -32,12 +30,11 @@ pub fn compute_swap_math(
     amount_in: u64,
     price_in: u64,
     price_out: u64,
-    decimals_in: u8,
-    decimals_out: u8,
+    decimals_in: u32,
+    decimals_out: u32,
     vault_in: &Vault,
     vault_out: &Vault,
     protocol_fee_bps: u64,
-    partner_fee_bps: u64,
 ) -> Result<SwapMathResult> {
     // Get the LP fee and protocol fee
     let swap_fee_bps = fees_setting(&vault_in, &vault_out);
@@ -52,23 +49,21 @@ pub fn compute_swap_math(
     ).map_err(|e| anyhow!("raw_amount_out failed: {:?}", e))?;
 
     // 2️⃣ Ensure the total fees do not exceed 100%
-    if swap_fee_bps + protocol_fee_bps + partner_fee_bps > 10_000 {
+    if swap_fee_bps + protocol_fee_bps > 10_000 {
         return Err(anyhow!("Total fee exceeds 100%"));
     }
 
     // 3️⃣ Calculate individual fees and net output after fees
-    let (after_fee, lp_fee, protocol_fee, partner_fee) = calculate_fee_amount(
+    let (after_fee, lp_fee, protocol_fee) = calculate_fee_amount(
         raw_out,
         swap_fee_bps,
         protocol_fee_bps,
-        partner_fee_bps,
     ).map_err(|e| anyhow!("calculate_fee_amount failed: {:?}", e))?;
 
     // 4️⃣ Check if the vault has sufficient liquidity
     let total_out = after_fee
         .checked_add(lp_fee)
         .and_then(|v| v.checked_add(protocol_fee))
-        .and_then(|v| v.checked_add(partner_fee))
         .ok_or_else(|| anyhow!("Overflow when summing fees"))?;
 
     if vault_out.current_liquidity < total_out {
@@ -82,6 +77,5 @@ pub fn compute_swap_math(
         net_amount_out: after_fee,
         lp_fee_amount: lp_fee,
         protocol_fee_amount: protocol_fee,
-        partner_fee_amount: partner_fee,
     })
 }

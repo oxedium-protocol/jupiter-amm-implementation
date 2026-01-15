@@ -68,11 +68,11 @@ use solana_sdk_ids::bpf_loader_upgradeable;
 
 pub static SPL_TOKEN_MINT_TO_IN_AMOUNT: LazyLock<HashMap<Pubkey, u64>> = LazyLock::new(|| {
     HashMap::from([
-        (spl_token::native_mint::ID, 25_000_000_000),
-        (constants::USDC_MINT, 1_110_000_000),
+        (spl_token::native_mint::ID, 25_000_000),
+        (constants::USDC_MINT, 1_110_000),
         (
             pubkey!("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"),
-            1_110_000_000,
+            1_110_000,
         ),
     ])
 });

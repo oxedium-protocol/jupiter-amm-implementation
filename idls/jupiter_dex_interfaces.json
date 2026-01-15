@@ -4961,63 +4961,56 @@
       "accounts": [
         {
           "name": "signer",
-          "isMut": true,
-          "isSigner": true
+          "writable": true
         },
         {
-          "name": "vault_in",
-          "isMut": true,
-          "isSigner": false
+          "name": "mint_in"
         },
         {
-          "name": "vault_out",
-          "isMut": true,
-          "isSigner": false
+          "name": "mint_out"
         },
         {
-          "name": "treasury",
-          "isMut": true,
-          "isSigner": false
+          "name": "pyth_price_account_in"
         },
         {
-          "name": "pyth_price_in",
-          "isMut": false,
-          "isSigner": false
+          "name": "pyth_price_account_out"
         },
         {
-          "name": "pyth_price_out",
-          "isMut": false,
-          "isSigner": false
+          "name": "signer_ata_in",
+          "writable": true
         },
         {
-          "name": "user_source_token_account",
-          "isMut": true,
-          "isSigner": false
+          "name": "signer_ata_out",
+          "writable": true
         },
         {
-          "name": "user_destination_token_account",
-          "isMut": true,
-          "isSigner": false
+          "name": "vault_pda_in",
+          "writable": true
         },
         {
-          "name": "user_transfer_authority",
-          "isMut": false,
-          "isSigner": true
+          "name": "vault_pda_out",
+          "writable": true
         },
         {
-          "name": "token_program",
-          "isMut": false,
-          "isSigner": false
+          "name": "treasury_pda",
+          "writable": true
         },
         {
-          "name": "associated_token_program",
-          "isMut": false,
-          "isSigner": false
+          "name": "treasury_ata_in",
+          "writable": true
         },
         {
-          "name": "system_program",
-          "isMut": false,
-          "isSigner": false
+          "name": "treasury_ata_out",
+          "writable": true
+        },
+        {
+          "name": "associated_token_program"
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program"
         }
       ],
       "args": []

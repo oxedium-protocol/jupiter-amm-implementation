@@ -15,8 +15,8 @@ use crate::utils::SCALE;
 /// * `Result<u64>` - Output token amount in smallest units
 pub fn raw_amount_out(
     amount_in: u64,
-    decimals_in: u8,
-    decimals_out: u8,
+    decimals_in: u32,
+    decimals_out: u32,
     price_in: u64,
     price_out: u64,
 ) -> Result<u64> {
